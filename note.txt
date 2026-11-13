@@ -1,0 +1,15 @@
+categorie f transaction matmchich 
+parametre matmchich 
+les graphes maybanouch 
+
+to add 
+EcoBot – Assistant IA
+Communauté & Avis
+et pour les coseils voila les reges a suivre 
+Les règles utilisées
+Règle	Déclencheur
+Dépense inhabituelle (ton exemple 3 000 → 8 000 DA)	Semaine en cours (depuis lundi) ≥ 150 % de ta moyenne hebdomadaire sur les 4 semaines précédentes et écart ≥ 1 000 DA. Il faut au moins 2 semaines d’historique dans la catégorie.
+Hausse par catégorie	Dépenses du 1er au jour J ≥ +30 % par rapport à la même période du mois précédent (on compare ce qui est comparable).
+Économies possibles	Loisirs, Shopping et Autres représentent ≥ 25 % des dépenses : on calcule le gain d’une réduction de 20 %.
+Prévision de fin de mois	Dépenses ÷ jours écoulés × jours du mois, comparée au budget global ou aux revenus.
+Budgets, objectifs, équilibre	Budget à 80 % ou dépassé, objectif proche (≥ 80 %), échéance proche, dépenses supérieures aux revenus, taux d’épargne ≥ 20 %.

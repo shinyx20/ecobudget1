@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Paramètres · EcoBudget{% endblock %}
+{% block page_title %}Paramètres{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h2>Paramètres</h2>
+        <p class="muted">Personnalisez EcoBudget selon vos préférences.</p>
+    </div>
+</div>
+
+<form method="post" action="/settings/save" class="settings-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <!-- ===== Apparence ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="palette"></i> Apparence</h3>
+        <p class="muted">Choisissez le thème. L'aperçu est immédiat, pensez à enregistrer.</p>
+
+        <div class="theme-options" role="radiogroup" aria-label="Thème">
+            <label class="theme-option">
+                <input type="radio" name="theme" value="light" {% if s.theme == 'light' %}checked{% endif %}>
+                <span class="box"><i data-lucide="sun"></i> Mode clair</span>
+            </label>
+            <label class="theme-option">
+                <input type="radio" name="theme" value="dark" {% if s.theme == 'dark' %}checked{% endif %}>
+                <span class="box"><i data-lucide="moon"></i> Mode sombre</span>
+            </label>
+        </div>
+
+        <label class="switch-row">
+            <span class="switch-text">
+                <strong>Affichage compact</strong>
+                <span class="muted small">Réduit les marges pour afficher plus d'informations à l'écran.</span>
+            </span>
+            <span class="switch">
+                <input type="checkbox" name="compact" {% if s.compact_view %}checked{% endif %}>
+                <span class="slider"></span>
+            </span>
+        </label>
+    </section>
+
+    <!-- ===== Langue et devise ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="globe"></i> Langue et devise</h3>
+        <div class="settings-row">
+            <div class="field">
+                <label for="language">Langue</label>
+                <select class="control" id="language" name="language">
+                    <option value="fr" selected>Français</option>
+                    <option value="en" disabled>English (bientôt disponible)</option>
+                    <option value="ar" disabled>العربية (bientôt disponible)</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="currency">Devise</label>
+                <select class="control" id="currency" name="currency">
+                    {% for code, label in currency_options %}
+                    <option value="{{ code }}" {% if s.currency == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="field-hint">Change uniquement le symbole affiché : aucune conversion n'est appliquée aux montants.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Notifications ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="bell"></i> Notifications</h3>
+        <label class="switch-row">
+            <span class="switch-text">
+                <strong>Alertes budgétaires et conseils</strong>
+                <span class="muted small">Alerte à 80 % d'un budget, dépassement, dépense inhabituelle et objectif proche.
+                    Désactivées, aucune alerte n'est créée (les conseils restent visibles dans leur page).</span>
+            </span>
+            <span class="switch">
+                <input type="checkbox" name="notifications" {% if s.notifications_enabled %}checked{% endif %}>
+                <span class="slider"></span>
+            </span>
+        </label>
+    </section>
+
+    <div class="btn-row">
+        <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Enregistrer les paramètres</button>
+    </div>
+</form>
+
+<!-- ===== Sécurité et confidentialité ===== -->
+<section class="card settings-block">
+    <h3 class="card-title"><i data-lucide="shield-check"></i> Sécurité et confidentialité</h3>
+
+    <div class="setting-line">
+        <div>
+            <strong>Mot de passe</strong>
+            <p class="muted small">Modifiez votre mot de passe depuis votre profil.</p>
+        </div>
+        <a href="/profile" class="btn btn-ghost btn-sm"><i data-lucide="lock"></i> Modifier</a>
+    </div>
+
+    <div class="setting-line">
+        <div>
+            <strong>Mes données</strong>
+            <p class="muted small">Téléchargez une copie de vos transactions, budgets, objectifs et notifications (JSON).</p>
+        </div>
+        <a href="/settings/export" class="btn btn-ghost btn-sm"><i data-lucide="download"></i> Télécharger</a>
+    </div>
+
+    <div class="setting-line">
+        <div>
+            <strong>Protections actives</strong>
+            <ul class="check-list small">
+                <li><i data-lucide="check"></i> Mot de passe stocké sous forme de hash sécurisé</li>
+                <li><i data-lucide="check"></i> Chaque compte accède uniquement à ses propres données</li>
+                <li><i data-lucide="check"></i> Protection contre les injections SQL et les failles XSS et CSRF</li>
+                <li><i data-lucide="check"></i> « Se souvenir de moi » : session limitée à 30 jours</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Zone de danger ===== -->
+<section class="card danger-zone">
+    <h3 class="card-title"><i data-lucide="triangle-alert"></i> Zone de danger</h3>
+    <div class="setting-line">
+        <div>
+            <strong>Supprimer mon compte</strong>
+            <p class="muted small">Supprime définitivement votre compte et toutes vos données. Cette action est irréversible.</p>
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" id="delete-account"><i data-lucide="trash-2"></i> Supprimer mon compte</button>
+    </div>
+    <form method="post" action="/settings/delete-account" id="delete-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="password" id="delete-password">
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    /* Aperçu immédiat du thème choisi */
+    var radios = document.querySelectorAll('input[name="theme"]');
+    radios.forEach(function (r) {
+        r.addEventListener("change", function () {
+            if (r.checked) document.documentElement.setAttribute("data-theme", r.value);
+        });
+    });
+    /* Si on utilise le bouton lune/soleil du haut, les cases suivent */
+    new MutationObserver(function () {
+        var t = document.documentElement.getAttribute("data-theme");
+        radios.forEach(function (r) { r.checked = (r.value === t); });
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    /* Suppression du compte : confirmation + mot de passe */
+    var del = document.getElementById("delete-account");
+    if (del) {
+        del.addEventListener("click", function () {
+            Swal.fire({
+                title: "Supprimer votre compte ?",
+                text: "Toutes vos données seront définitivement supprimées. Saisissez votre mot de passe pour confirmer.",
+                icon: "warning",
+                input: "password",
+                inputPlaceholder: "Votre mot de passe",
+                inputAttributes: { autocomplete: "current-password" },
+                showCancelButton: true,
+                confirmButtonText: "Supprimer définitivement",
+                cancelButtonText: "Annuler",
+                confirmButtonColor: "#E76F51",
+                cancelButtonColor: "#6B7A80",
+                inputValidator: function (value) {
+                    if (!value) return "Veuillez saisir votre mot de passe.";
+                }
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    document.getElementById("delete-password").value = result.value;
+                    document.getElementById("delete-form").submit();
+                }
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Statistiques · EcoBudget{% endblock %}
+{% block page_title %}Statistiques{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h2>Analyse de vos finances</h2>
+        <p class="muted">{{ range_label }}</p>
+    </div>
+</div>
+
+<!-- ===== Filtres de période ===== -->
+<nav class="pills" aria-label="Période d'analyse">
+    {% for key, label in [('week', 'Semaine'), ('month', 'Mois'), ('year', 'Année'), ('custom', 'Personnalisée')] %}
+    <a href="/statistics?period={{ key }}" class="pill {{ 'active' if period == key else '' }}"
+       {% if period == key %}aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+</nav>
+
+{% if period == 'custom' %}
+<form class="card filters" method="get" action="/statistics">
+    <input type="hidden" name="period" value="custom">
+    <div>
+        <label for="s-from">Du</label>
+        <input class="control" type="date" id="s-from" name="date_from" value="{{ start }}" required>
+    </div>
+    <div>
+        <label for="s-to">Au</label>
+        <input class="control" type="date" id="s-to" name="date_to" value="{{ end }}" required>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Appliquer</button>
+    </div>
+</form>
+{% endif %}
+
+<!-- ===== Résumé ===== -->
+<section class="summary-grid four">
+    <article class="card mini"><p class="muted">Revenus</p><p class="mini-value income">{{ total_income|da }}</p></article>
+    <article class="card mini"><p class="muted">Dépenses</p><p class="mini-value expense">{{ total_expense|da }}</p></article>
+    <article class="card mini">
+        <p class="muted">Solde de la période</p>
+        <p class="mini-value {{ 'income' if total_income - total_expense >= 0 else 'expense' }}">{{ (total_income - total_expense)|da }}</p>
+    </article>
+    <article class="card mini"><p class="muted">Épargne ajoutée</p><p class="mini-value">{{ savings_added|da }}</p></article>
+</section>
+
+{% if not has_data %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="chart-pie"></i></span>
+    <h3>Aucune donnée sur cette période</h3>
+    <p class="muted">Changez la période ou ajoutez des transactions pour voir vos statistiques.</p>
+    <a href="/transactions" class="btn btn-primary">Ajouter une transaction</a>
+</section>
+{% else %}
+<div id="stats-data" data-charts='{{ charts|tojson }}' hidden></div>
+
+<section class="stats-grid">
+    <article class="card">
+        <h3>Répartition des dépenses</h3>
+        <p class="muted small">Par catégorie</p>
+        {% if charts.categories %}
+        <div class="chart-box"><canvas id="chart-categories" role="img" aria-label="Répartition des dépenses par catégorie"></canvas></div>
+        {% else %}
+        <div class="mini-empty"><i data-lucide="chart-pie"></i><p class="muted">Aucune dépense sur cette période.</p></div>
+        {% endif %}
+    </article>
+
+    <article class="card">
+        <h3>Catégories les plus coûteuses</h3>
+        <p class="muted small">Top 5 de la période</p>
+        {% if top_categories %}
+        <ul class="rank-list">
+            {% for c in top_categories %}
+            <li>
+                <span class="cat-icon expense"><i data-lucide="{{ c.icon }}"></i></span>
+                <div class="rank-info">
+                    <div class="rank-top"><strong>{{ c.name }}</strong><span class="amount expense">{{ c.total|da }}</span></div>
+                    <div class="progress danger"><span data-progress="{{ c.percent }}"></span></div>
+                    <span class="muted small">{{ c.percent }} % des dépenses</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="mini-empty"><i data-lucide="receipt"></i><p class="muted">Aucune dépense sur cette période.</p></div>
+        {% endif %}
+    </article>
+
+    <article class="card">
+        <h3>Évolution des dépenses</h3>
+        <p class="muted small">{{ 'Par mois' if charts.labels|length > 62 else 'Par jour' }}</p>
+        <div class="chart-box"><canvas id="chart-expense" role="img" aria-label="Évolution des dépenses dans le temps"></canvas></div>
+    </article>
+
+    <article class="card">
+        <h3>Revenus et dépenses</h3>
+        <p class="muted small">Comparaison sur la période</p>
+        <div class="chart-box"><canvas id="chart-compare" role="img" aria-label="Comparaison entre revenus et dépenses"></canvas></div>
+    </article>
+
+    <article class="card stats-wide">
+        <h3>Évolution de l'épargne</h3>
+        <p class="muted small">Total cumulé de vos objectifs d'épargne</p>
+        {% if savings_total > 0 %}
+        <div class="chart-box"><canvas id="chart-savings" role="img" aria-label="Évolution de l'épargne cumulée"></canvas></div>
+        {% else %}
+        <div class="mini-empty">
+            <i data-lucide="piggy-bank"></i>
+            <p class="muted">Aucune épargne enregistrée pour le moment.</p>
+            <a href="/goals" class="link">Créer un objectif d'épargne</a>
+        </div>
+        {% endif %}
+    </article>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/statistics.js') }}"></script>
+{% endblock %}

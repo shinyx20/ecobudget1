@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Connexion · EcoBudget{% endblock %}
+
+{% block shell %}
+<div class="auth-page">
+    <aside class="auth-aside">
+        <div class="brand">
+            <span class="brand-logo"><i data-lucide="leaf"></i></span>
+            <span class="brand-name">EcoBudget</span>
+        </div>
+        <div>
+            <h2>Gardez le contrôle de votre argent, simplement.</h2>
+            <ul class="auth-points">
+                <li><i data-lucide="check"></i> Suivez vos revenus et dépenses en DA</li>
+                <li><i data-lucide="check"></i> Fixez vos budgets et objectifs d'épargne</li>
+                <li><i data-lucide="check"></i> Recevez des conseils basés sur vos habitudes</li>
+            </ul>
+        </div>
+        <p class="auth-foot">Projet IHM · ING4 Software Engineering · USTHB</p>
+    </aside>
+
+    <section class="auth-main">
+        <button class="icon-btn auth-theme" type="button" data-theme-toggle aria-label="Changer le thème (clair / sombre)">
+            <i data-lucide="moon" class="icon-moon"></i>
+            <i data-lucide="sun" class="icon-sun"></i>
+        </button>
+
+        <div class="auth-card">
+            <h1>Connexion</h1>
+            <p class="muted">Content de vous revoir. Entrez vos identifiants pour continuer.</p>
+
+            <form method="post" action="/login" novalidate data-validate>
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+                <div class="field {% if errors.get('email') %}has-error{% endif %}">
+                    <label for="email">Adresse email</label>
+                    <div class="input-wrap">
+                        <i data-lucide="mail"></i>
+                        <input type="email" id="email" name="email" required autocomplete="email"
+                               placeholder="nom@mail.com" value="{{ form.get('email', '') }}">
+                    </div>
+                    <p class="field-error">{{ errors.get('email', '') }}</p>
+                </div>
+
+                <div class="field {% if errors.get('password') %}has-error{% endif %}">
+                    <label for="password">Mot de passe</label>
+                    <div class="input-wrap">
+                        <i data-lucide="lock"></i>
+                        <input type="password" id="password" name="password" required
+                               autocomplete="current-password" placeholder="Votre mot de passe">
+                        <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">
+                            <i data-lucide="eye" class="icon-show"></i>
+                            <i data-lucide="eye-off" class="icon-hide"></i>
+                        </button>
+                    </div>
+                    <p class="field-error">{{ errors.get('password', '') }}</p>
+                </div>
+
+                <div class="row-between">
+                    <label class="check">
+                        <input type="checkbox" name="remember"> Se souvenir de moi
+                    </label>
+                    <a href="#" id="forgot-link" class="link">Mot de passe oublié ?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+            </form>
+
+            <p class="auth-switch">Pas encore de compte ? <a href="/signup" class="link">Créer un compte</a></p>
+        </div>
+    </section>
+</div>
+{% endblock %}

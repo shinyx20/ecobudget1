@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Profil · EcoBudget{% endblock %}
+{% block page_title %}Profil{% endblock %}
+
+{% block content %}
+<section class="card profile-head">
+    <div class="avatar-lg" id="avatar-preview">
+        {% if current_user.photo %}
+        <img src="{{ url_for('profile.avatar', v=current_user.photo) }}" alt="Photo de profil">
+        {% else %}
+        {{ current_user.full_name[:1]|upper }}
+        {% endif %}
+    </div>
+    <div>
+        <h2>{{ current_user.full_name }}</h2>
+        <p class="muted">{{ current_user.email }}</p>
+    </div>
+</section>
+
+<div class="profile-grid">
+
+    <!-- ===== Informations personnelles ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="user"></i> Informations personnelles</h3>
+        <p class="muted">Modifiez votre nom et votre adresse email.</p>
+        <form method="post" action="/profile/update" novalidate data-validate>
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="field {% if errors.get('full_name') %}has-error{% endif %}">
+                <label for="full_name">Nom complet</label>
+                <div class="input-wrap">
+                    <i data-lucide="user"></i>
+                    <input type="text" id="full_name" name="full_name" required minlength="2" maxlength="60"
+                           value="{{ form.get('full_name', current_user.full_name) }}">
+                </div>
+                <p class="field-error">{{ errors.get('full_name', '') }}</p>
+            </div>
+
+            <div class="field {% if errors.get('email') %}has-error{% endif %}">
+                <label for="email">Adresse email</label>
+                <div class="input-wrap">
+                    <i data-lucide="mail"></i>
+                    <input type="email" id="email" name="email" required
+                           value="{{ form.get('email', current_user.email) }}">
+                </div>
+                <p class="field-error">{{ errors.get('email', '') }}</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+        </form>
+    </section>
+
+    <!-- ===== Photo de profil ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="image"></i> Photo de profil</h3>
+        <p class="muted">Ajoutez une photo pour personnaliser votre compte.</p>
+        <form method="post" action="/profile/photo" enctype="multipart/form-data" id="photo-form" novalidate>
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="field {% if errors.get('photo') %}has-error{% endif %}">
+                <label for="photo">Choisir une image</label>
+                <input class="control" type="file" id="photo" name="photo" accept="image/png,image/jpeg,image/webp">
+                <p class="field-hint">PNG, JPG ou WebP · 2 Mo maximum. L'aperçu s'affiche en haut de la page.</p>
+                <p class="field-error">{{ errors.get('photo', '') }}</p>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Enregistrer la photo</button>
+                {% if current_user.photo %}
+                <button type="button" class="btn btn-ghost" id="remove-photo">Supprimer la photo</button>
+                {% endif %}
+            </div>
+        </form>
+        {% if current_user.photo %}
+        <form method="post" action="/profile/photo/delete" id="remove-photo-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+    </section>
+
+    <!-- ===== Mot de passe ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="lock"></i> Mot de passe</h3>
+        <p class="muted">Choisissez un mot de passe d'au moins 8 caractères.</p>
+        <form method="post" action="/profile/password" novalidate data-validate>
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="field {% if errors.get('current_password') %}has-error{% endif %}">
+                <label for="current_password">Mot de passe actuel</label>
+                <div class="input-wrap">
+                    <i data-lucide="lock"></i>
+                    <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+                    <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">
+                        <i data-lucide="eye" class="icon-show"></i>
+                        <i data-lucide="eye-off" class="icon-hide"></i>
+                    </button>
+                </div>
+                <p class="field-error">{{ errors.get('current_password', '') }}</p>
+            </div>
+
+            <div class="field {% if errors.get('new_password') %}has-error{% endif %}">
+                <label for="new_password">Nouveau mot de passe</label>
+                <div class="input-wrap">
+                    <i data-lucide="lock-keyhole"></i>
+                    <input type="password" id="new_password" name="new_password" required minlength="8" data-strong
+                           autocomplete="new-password">
+                    <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">
+                        <i data-lucide="eye" class="icon-show"></i>
+                        <i data-lucide="eye-off" class="icon-hide"></i>
+                    </button>
+                </div>
+                <p class="field-hint">Au moins 8 caractères, avec une lettre et un chiffre.</p>
+                <p class="field-error">{{ errors.get('new_password', '') }}</p>
+            </div>
+
+            <div class="field {% if errors.get('confirm_password') %}has-error{% endif %}">
+                <label for="confirm_password">Confirmer le nouveau mot de passe</label>
+                <div class="input-wrap">
+                    <i data-lucide="lock-keyhole"></i>
+                    <input type="password" id="confirm_password" name="confirm_password" required
+                           data-match="new_password" autocomplete="new-password">
+                    <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">
+                        <i data-lucide="eye" class="icon-show"></i>
+                        <i data-lucide="eye-off" class="icon-hide"></i>
+                    </button>
+                </div>
+                <p class="field-error">{{ errors.get('confirm_password', '') }}</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Modifier le mot de passe</button>
+        </form>
+    </section>
+
+    <!-- ===== Informations du compte ===== -->
+    <section class="card">
+        <h3 class="card-title"><i data-lucide="id-card"></i> Informations du compte</h3>
+        <p class="muted">Un aperçu de votre activité sur EcoBudget.</p>
+        <ul class="info-list">
+            <li><span class="muted">Membre depuis le</span><strong>{{ current_user.created_at[:10]|fr_date }}</strong></li>
+            <li><span class="muted">Transactions enregistrées</span><strong>{{ stats.transactions }}</strong></li>
+            <li><span class="muted">Objectifs d'épargne</span><strong>{{ stats.goals }}</strong></li>
+            <li><span class="muted">Devise</span><strong>{{ currency }}</strong></li>
+        </ul>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var input = document.getElementById("photo");
+    var form = document.getElementById("photo-form");
+    var preview = document.getElementById("avatar-preview");
+    var MAX = 2 * 1024 * 1024;
+    var TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+    function check() {
+        var file = input.files[0];
+        if (!file) return "Veuillez choisir une image.";
+        if (TYPES.indexOf(file.type) === -1) return "Format non pris en charge (PNG, JPG ou WebP).";
+        if (file.size > MAX) return "Image trop volumineuse (2 Mo maximum).";
+        return "";
+    }
+
+    input.addEventListener("change", function () {
+        var file = input.files[0];
+        if (!file) { setFieldError(input, ""); return; }
+        var message = check();
+        setFieldError(input, message);
+        if (!message) {
+            var img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            img.alt = "Aperçu de la photo";
+            preview.innerHTML = "";
+            preview.appendChild(img);
+        }
+    });
+
+    form.addEventListener("submit", function (event) {
+        var message = check();
+        if (message) {
+            event.preventDefault();
+            setFieldError(input, message);
+            toast(message, "error");
+        }
+    });
+
+    var removeBtn = document.getElementById("remove-photo");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", function () {
+            Swal.fire({
+                title: "Supprimer votre photo ?",
+                text: "Vos initiales seront affichées à la place.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Oui, supprimer",
+                cancelButtonText: "Annuler",
+                confirmButtonColor: "#E76F51",
+                cancelButtonColor: "#6B7A80",
+                focusCancel: true
+            }).then(function (result) {
+                if (result.isConfirmed) document.getElementById("remove-photo-form").submit();
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

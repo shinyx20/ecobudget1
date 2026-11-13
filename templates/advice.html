@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Conseils intelligents · EcoBudget{% endblock %}
+{% block page_title %}Conseils intelligents{% endblock %}
+
+{% block content %}
+{% set labels = {'danger': 'Alerte', 'warning': 'À surveiller', 'success': 'Bonne nouvelle', 'info': 'Information'} %}
+{% set badge = {'danger': 'danger', 'warning': 'warning', 'success': 'ok', 'info': 'neutral'} %}
+
+<div class="page-head">
+    <div>
+        <h2>Vos conseils personnalisés</h2>
+        <p class="muted">Analyse automatique de vos habitudes, calculée à partir de vos transactions réelles.</p>
+    </div>
+</div>
+
+{% if problems %}
+<section class="card alert-item warning" role="status">
+    <span class="alert-icon"><i data-lucide="triangle-alert"></i></span>
+    <div>
+        <strong>Certaines analyses n'ont pas pu être calculées</strong>
+        <p>Non disponibles pour le moment : {{ problems|join(', ') }}. Les autres conseils restent valides.</p>
+    </div>
+</section>
+{% endif %}
+
+{% if total_count == 0 %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="lightbulb"></i></span>
+    <h3>Pas encore de conseils</h3>
+    <p class="muted">Ajoutez vos premières transactions : EcoBudget analysera vos habitudes et vous préviendra en cas de dépense inhabituelle.</p>
+    <a href="/transactions" class="btn btn-primary">Ajouter une transaction</a>
+</section>
+
+{% else %}
+<!-- ===== Résumé ===== -->
+<section class="summary-grid">
+    <article class="card mini"><p class="muted">À surveiller</p><p class="mini-value expense">{{ counts.attention }}</p></article>
+    <article class="card mini"><p class="muted">Points positifs</p><p class="mini-value income">{{ counts.success }}</p></article>
+    <article class="card mini"><p class="muted">Informations</p><p class="mini-value">{{ counts.info }}</p></article>
+</section>
+
+<!-- ===== Dépenses inhabituelles ===== -->
+<h3 class="section-title">Dépenses inhabituelles · {{ weekly.week_label }}</h3>
+{% if weekly.rows %}
+<section class="card table-card">
+    <div class="table-wrap">
+        <table class="tx">
+            <thead>
+                <tr>
+                    <th>Catégorie</th>
+                    <th class="right">Cette semaine</th>
+                    <th class="right">Moyenne par semaine</th>
+                    <th class="right">Écart</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in weekly.rows %}
+                <tr>
+                    <td>
+                        <div class="cat-cell">
+                            <span class="cat-icon expense"><i data-lucide="{{ w.icon }}"></i></span>
+                            {{ w.name }}
+                        </div>
+                    </td>
+                    <td class="right amount">{{ w.current|da }}</td>
+                    <td class="right">{% if w.average %}{{ w.average|da }}{% else %}—{% endif %}</td>
+                    <td class="right">{% if w.change is not none %}{{ '+' if w.change > 0 else '' }}{{ w.change }} %{% else %}—{% endif %}</td>
+                    <td>
+                        {% if w.status == 'unusual' %}
+                        <span class="status danger"><i data-lucide="triangle-alert"></i> Inhabituel</span>
+                        {% elif w.status == 'high' %}
+                        <span class="status warning"><i data-lucide="trending-up"></i> En hausse</span>
+                        {% elif w.status == 'normal' %}
+                        <span class="status ok"><i data-lucide="circle-check"></i> Normal</span>
+                        {% else %}
+                        <span class="status neutral"><i data-lucide="hourglass"></i> Historique insuffisant</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="muted small table-note">
+        La semaine en cours commence lundi. La moyenne est calculée sur vos 4 dernières semaines (semaines où vous avez dépensé
+        dans la catégorie). Au moins 2 semaines d'historique sont nécessaires.
+    </p>
+</section>
+{% else %}
+<section class="card"><div class="mini-empty"><i data-lucide="receipt"></i><p class="muted">Aucune dépense enregistrée cette semaine.</p></div></section>
+{% endif %}
+
+<!-- ===== Recommandations ===== -->
+<h3 class="section-title">Recommandations personnalisées</h3>
+{% if insights %}
+<div class="insight-grid">
+    {% for i in insights %}
+    <article class="card insight {{ i.level }}">
+        <div class="insight-head">
+            <span class="insight-icon"><i data-lucide="{{ i.icon }}"></i></span>
+            <span class="status {{ badge[i.level] }}">{{ labels[i.level] }}</span>
+        </div>
+        <h3>{{ i.title }}</h3>
+        <p>{{ i.text }}</p>
+        <details class="why">
+            <summary>Pourquoi ce conseil ?</summary>
+            <p class="muted small">{{ i.why }}</p>
+        </details>
+        {% if i.link %}<a class="link small" href="{{ i.link.url }}">{{ i.link.label }} →</a>{% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="card"><div class="mini-empty"><i data-lucide="lightbulb"></i><p class="muted">Aucune recommandation pour le moment.</p></div></section>
+{% endif %}
+{% endif %}
+
+<!-- ===== Comment ça marche ===== -->
+<section class="card">
+    <h3 class="card-title"><i data-lucide="circle-help"></i> Comment ça marche ?</h3>
+    <p class="muted">Ces conseils ne sont pas aléatoires : ils reposent sur des règles simples appliquées à vos propres données, sans intelligence artificielle externe.</p>
+    <ul class="how-list">
+        <li><i data-lucide="activity"></i><div><strong>Dépenses inhabituelles</strong><br><span class="muted">Votre semaine en cours est comparée à votre moyenne hebdomadaire par catégorie. Alerte à partir de +50 % et 1 000 DA d'écart.</span></div></li>
+        <li><i data-lucide="calendar-range"></i><div><strong>Tendances du mois</strong><br><span class="muted">Vos dépenses sont comparées à la même période du mois précédent. Alerte à partir de +30 %.</span></div></li>
+        <li><i data-lucide="gauge"></i><div><strong>Prévisions et objectifs</strong><br><span class="muted">Vos dépenses sont projetées jusqu'à la fin du mois et comparées à vos budgets, revenus et objectifs d'épargne.</span></div></li>
+    </ul>
+</section>
+{% endblock %}

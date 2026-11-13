@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · EcoBudget{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<section class="card welcome">
+    <div class="welcome-row">
+        <div>
+            <h2>Bonjour, {{ current_user.full_name.split(' ')[0] }}</h2>
+            <p class="muted">Voici votre résumé financier de {{ month_label }}.</p>
+        </div>
+        <a href="/transactions" class="btn btn-primary"><i data-lucide="plus"></i> Ajouter une transaction</a>
+    </div>
+</section>
+
+<!-- ===== Indicateurs ===== -->
+<section class="stat-grid">
+    <article class="card stat">
+        <span class="stat-icon"><i data-lucide="landmark"></i></span>
+        <p class="muted">Solde total disponible</p>
+        <p class="stat-value {{ 'expense' if balance < 0 else '' }}">{{ balance|da }}</p>
+    </article>
+    <article class="card stat">
+        <span class="stat-icon income"><i data-lucide="trending-up"></i></span>
+        <p class="muted">Revenus du mois</p>
+        <p class="stat-value income">{{ income|da }}</p>
+    </article>
+    <article class="card stat">
+        <span class="stat-icon expense"><i data-lucide="trending-down"></i></span>
+        <p class="muted">Dépenses du mois</p>
+        <p class="stat-value expense">{{ expense|da }}</p>
+    </article>
+    <article class="card stat">
+        <span class="stat-icon"><i data-lucide="wallet"></i></span>
+        <p class="muted">Budget restant</p>
+        {% if budget_remaining is not none %}
+        <p class="stat-value {{ 'expense' if budget_remaining < 0 else '' }}">{{ budget_remaining|da }}</p>
+        <div class="progress {{ 'danger' if budget_percent > 100 else ('warning' if budget_percent >= 80 else '') }}">
+            <span data-progress="{{ budget_percent }}"></span>
+        </div>
+        <p class="stat-note muted">{{ budget_percent }} % de {{ global_budget|da }}</p>
+        {% else %}
+        <p class="stat-value">—</p>
+        <p class="stat-note"><a href="/budgets" class="link">Définir un budget mensuel</a></p>
+        {% endif %}
+    </article>
+</section>
+
+<!-- ===== Alertes budgétaires ===== -->
+{% if alerts %}
+<section class="card alerts" aria-label="Alertes budgétaires">
+    <h3>Alertes budgétaires</h3>
+    {% for a in alerts %}
+    <div class="alert-item {{ a.level }}">
+        <span class="alert-icon"><i data-lucide="{{ 'triangle-alert' if a.level == 'danger' else 'bell-ring' }}"></i></span>
+        <div>
+            <strong>{{ a.title }}</strong>
+            <p>{{ a.text }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if total_count == 0 %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="receipt"></i></span>
+    <h3>Aucune transaction pour le moment</h3>
+    <p class="muted">Ajoutez votre premier revenu ou votre première dépense pour voir apparaître vos graphiques.</p>
+    <a href="/transactions" class="btn btn-primary">Ajouter une transaction</a>
+</section>
+{% else %}
+
+<!-- ===== Graphiques ===== -->
+<div id="dash-data" data-charts='{{ charts|tojson }}' hidden></div>
+<section class="dash-grid">
+    <article class="card">
+        <h3>Revenus et dépenses</h3>
+        <p class="muted small">Les 6 derniers mois</p>
+        <div class="chart-box">
+            <canvas id="chart-monthly" role="img" aria-label="Graphique des revenus et dépenses par mois"></canvas>
+        </div>
+    </article>
+    <article class="card">
+        <h3>Dépenses par catégorie</h3>
+        <p class="muted small">{{ month_label|capitalize }}</p>
+        {% if charts.categories %}
+        <div class="chart-box">
+            <canvas id="chart-categories" role="img" aria-label="Répartition des dépenses par catégorie"></canvas>
+        </div>
+        {% else %}
+        <div class="mini-empty">
+            <i data-lucide="chart-pie"></i>
+            <p class="muted">Aucune dépense enregistrée ce mois-ci.</p>
+        </div>
+        {% endif %}
+    </article>
+</section>
+{% endif %}
+
+<!-- ===== Dernières transactions + objectifs ===== -->
+<section class="dash-grid">
+    <article class="card">
+        <div class="card-head">
+            <h3>Dernières transactions</h3>
+            <a href="/transactions" class="link small">Voir tout</a>
+        </div>
+        {% if recent %}
+        <ul class="tx-list">
+            {% for t in recent %}
+            <li>
+                <span class="cat-icon {{ t.type }}"><i data-lucide="{{ t.category_icon }}"></i></span>
+                <div class="tx-info">
+                    <strong>{{ t.description or t.category_name }}</strong>
+                    <span class="muted small">{{ t.category_name }} · {{ t.date|fr_date }}</span>
+                </div>
+                <span class="amount {{ t.type }}">{{ '−' if t.type == 'expense' else '+' }} {{ t.amount|da }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="mini-empty">
+            <i data-lucide="receipt"></i>
+            <p class="muted">Aucune transaction pour le moment.</p>
+        </div>
+        {% endif %}
+    </article>
+
+    <article class="card">
+        <div class="card-head">
+            <h3>Objectifs d'épargne</h3>
+            <a href="/goals" class="link small">Gérer</a>
+        </div>
+        {% if goals %}
+        <ul class="goal-list">
+            {% for g in goals %}
+            <li class="goal-item">
+                <div class="goal-top">
+                    <strong>{{ g.name }}</strong>
+                    <span class="badge">{{ g.percent }} %</span>
+                </div>
+                <div class="progress"><span data-progress="{{ g.percent }}"></span></div>
+                <p class="muted small">{{ g.saved_amount|da }} sur {{ g.target_amount|da }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="mini-empty">
+            <i data-lucide="piggy-bank"></i>
+            <p class="muted">Aucun objectif d'épargne.</p>
+            <a href="/goals" class="link">Créer un objectif</a>
+        </div>
+        {% endif %}
+    </article>
+</section>
+
+<!-- ===== Conseils personnalisés ===== -->
+<section class="card">
+    <div class="card-head">
+        <h3>Conseils personnalisés</h3>
+        <a href="/advice" class="link small">Tous les conseils</a>
+    </div>
+    <ul class="tip-list">
+        {% for tip in tips %}
+        <li class="tip {{ tip.level }}">
+            <span class="tip-icon"><i data-lucide="{{ tip.icon }}"></i></span>
+            <p>{{ tip.text }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

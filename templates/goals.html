@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Objectifs d'épargne · EcoBudget{% endblock %}
+{% block page_title %}Objectifs d'épargne{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h2>Vos objectifs d'épargne</h2>
+        <p class="muted">Créez des objectifs, ajoutez de l'argent et suivez votre progression.</p>
+    </div>
+    <button type="button" class="btn btn-primary js-open-goal"><i data-lucide="plus"></i> Nouvel objectif</button>
+</div>
+
+{% if not goals %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="piggy-bank"></i></span>
+    <h3>Aucun objectif d'épargne</h3>
+    <p class="muted">Ex : acheter un ordinateur, financer un voyage ou économiser pour vos études.</p>
+    <button type="button" class="btn btn-primary js-open-goal"><i data-lucide="plus"></i> Créer mon premier objectif</button>
+</section>
+{% else %}
+<section class="summary-grid">
+    <article class="card mini"><p class="muted">Total épargné</p><p class="mini-value income">{{ total_saved|da }}</p></article>
+    <article class="card mini"><p class="muted">Total visé</p><p class="mini-value">{{ total_target|da }}</p></article>
+    <article class="card mini"><p class="muted">Objectifs atteints</p><p class="mini-value">{{ done_count }} / {{ goals|length }}</p></article>
+</section>
+
+<div class="card-grid">
+    {% for g in goals %}
+    <article class="card goal-card {{ 'done' if g.done else '' }}">
+        <div class="bc-head">
+            <strong class="goal-name">{{ g.name }}</strong>
+            <span class="badge">{{ g.percent }} %</span>
+        </div>
+        {% if g.description %}<p class="muted small goal-desc">{{ g.description }}</p>{% endif %}
+
+        <div class="progress"><span data-progress="{{ g.percent }}"></span></div>
+        <p class="bc-amounts"><strong>{{ g.saved_amount|da }}</strong> <span class="muted">sur {{ g.target_amount|da }}</span></p>
+
+        <ul class="goal-meta">
+            {% if g.done %}
+            <li class="ok"><i data-lucide="party-popper"></i> Objectif atteint, bravo !</li>
+            {% else %}
+            <li><i data-lucide="target"></i> Reste à économiser : <strong>{{ g.remaining|da }}</strong></li>
+            {% endif %}
+            <li class="{{ 'late' if g.overdue else '' }}">
+                <i data-lucide="calendar"></i> Échéance : {{ g.deadline|fr_date }}
+                {% if g.overdue %}(dépassée)
+                {% elif g.days_left is not none and not g.done %}(dans {{ g.days_left }} jour{{ 's' if g.days_left > 1 else '' }})
+                {% endif %}
+            </li>
+            {% if g.monthly %}
+            <li><i data-lucide="lightbulb"></i> Conseil : environ <strong>{{ g.monthly|da }}</strong> par mois</li>
+            {% endif %}
+        </ul>
+
+        <div class="goal-actions">
+            <button type="button" class="btn btn-primary btn-sm js-contribute"
+                    data-id="{{ g.id }}" data-name="{{ g.name }}" {% if g.done %}disabled{% endif %}>
+                <i data-lucide="plus"></i> Ajouter de l'argent
+            </button>
+            <div class="row-actions">
+                <button type="button" class="icon-btn sm js-edit-goal" aria-label="Modifier l'objectif {{ g.name }}"
+                        data-id="{{ g.id }}" data-name="{{ g.name }}" data-target="{{ g.target_amount }}"
+                        data-deadline="{{ g.deadline }}" data-description="{{ g.description or '' }}">
+                    <i data-lucide="pencil"></i>
+                </button>
+                <button type="button" class="icon-btn sm danger js-delete-goal" aria-label="Supprimer l'objectif {{ g.name }}"
+                        data-id="{{ g.id }}" data-name="{{ g.name }}">
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ===== Modale : créer / modifier un objectif ===== -->
+<div class="modal" id="goal-modal" aria-hidden="true" data-today="{{ today }}">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="goal-title">
+        <div class="modal-head">
+            <h3 id="goal-title">Nouvel objectif</h3>
+            <button type="button" class="icon-btn sm" data-close aria-label="Fermer la fenêtre"><i data-lucide="x"></i></button>
+        </div>
+        <form id="goal-form" novalidate>
+            <input type="hidden" id="g-id">
+            <div class="field">
+                <label for="g-name">Nom de l'objectif</label>
+                <input class="control" type="text" id="g-name" maxlength="80" placeholder="Ex : Acheter un ordinateur" required>
+                <p class="field-error"></p>
+            </div>
+            <div class="field">
+                <label for="g-target">Montant cible ({{ currency }})</label>
+                <input class="control" type="number" id="g-target" min="0.01" step="0.01" inputmode="decimal" placeholder="Ex : 120000" required>
+                <p class="field-error"></p>
+            </div>
+            <div class="field" id="saved-field">
+                <label for="g-saved">Montant déjà économisé ({{ currency }}) <span class="muted">(facultatif)</span></label>
+                <input class="control" type="number" id="g-saved" min="0" step="0.01" inputmode="decimal" placeholder="0">
+                <p class="field-error"></p>
+            </div>
+            <div class="field">
+                <label for="g-deadline">Date limite</label>
+                <input class="control" type="date" id="g-deadline" required>
+                <p class="field-error"></p>
+            </div>
+            <div class="field">
+                <label for="g-description">Description <span class="muted">(facultatif)</span></label>
+                <textarea class="control" id="g-description" maxlength="300" rows="2" placeholder="Ex : Pour mes projets de 5e année"></textarea>
+                <p class="field-error"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Annuler</button>
+                <button type="submit" class="btn btn-primary" id="g-submit">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Modale : ajouter de l'argent ===== -->
+<div class="modal" id="contrib-modal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="contrib-title">
+        <div class="modal-head">
+            <h3 id="contrib-title">Ajouter de l'argent</h3>
+            <button type="button" class="icon-btn sm" data-close aria-label="Fermer la fenêtre"><i data-lucide="x"></i></button>
+        </div>
+        <form id="contrib-form" novalidate>
+            <input type="hidden" id="c-id">
+            <p class="muted" id="c-info"></p>
+            <div class="field">
+                <label for="c-amount">Montant à ajouter ({{ currency }})</label>
+                <input class="control" type="number" id="c-amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Ex : 5000" required>
+                <p class="field-error"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Annuler</button>
+                <button type="submit" class="btn btn-primary" id="c-submit">Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/goals.js') }}"></script>
+{% endblock %}

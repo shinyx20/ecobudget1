@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Transactions · EcoBudget{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h2>Vos revenus et dépenses</h2>
+        <p class="muted">Ajoutez, modifiez, recherchez ou supprimez vos transactions.</p>
+    </div>
+    <button type="button" class="btn btn-primary js-open-add">
+        <i data-lucide="plus"></i> Ajouter une transaction
+    </button>
+</div>
+
+{% if total_count == 0 %}
+<!-- ===== État vide : aucune transaction ===== -->
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="receipt"></i></span>
+    <h3>Aucune transaction pour le moment</h3>
+    <p class="muted">Enregistrez votre première dépense ou votre premier revenu pour suivre votre budget.</p>
+    <button type="button" class="btn btn-primary js-open-add"><i data-lucide="plus"></i> Ajouter une transaction</button>
+</section>
+
+{% else %}
+<!-- ===== Résumé de la sélection ===== -->
+<section class="summary-grid">
+    <article class="card mini">
+        <p class="muted">Revenus</p>
+        <p class="mini-value income">{{ total_income|da }}</p>
+    </article>
+    <article class="card mini">
+        <p class="muted">Dépenses</p>
+        <p class="mini-value expense">{{ total_expense|da }}</p>
+    </article>
+    <article class="card mini">
+        <p class="muted">Solde</p>
+        <p class="mini-value {{ 'income' if total_income - total_expense >= 0 else 'expense' }}">{{ (total_income - total_expense)|da }}</p>
+    </article>
+</section>
+
+<!-- ===== Recherche et filtres ===== -->
+<form class="card filters" method="get" action="/transactions">
+    <div>
+        <label for="f-q">Recherche</label>
+        <input class="control" type="search" id="f-q" name="q" maxlength="100"
+               placeholder="Description ou catégorie" value="{{ filters.q }}">
+    </div>
+    <div>
+        <label for="f-type">Type</label>
+        <select class="control" id="f-type" name="type">
+            <option value="">Tous</option>
+            <option value="income" {% if filters.type == 'income' %}selected{% endif %}>Revenus</option>
+            <option value="expense" {% if filters.type == 'expense' %}selected{% endif %}>Dépenses</option>
+        </select>
+    </div>
+    <div>
+        <label for="f-category">Catégorie</label>
+        <select class="control" id="f-category" name="category">
+            <option value="">Toutes</option>
+            <optgroup label="Dépenses">
+                {% for c in categories if c.type == 'expense' %}
+                <option value="{{ c.id }}" {% if filters.category == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </optgroup>
+            <optgroup label="Revenus">
+                {% for c in categories if c.type == 'income' %}
+                <option value="{{ c.id }}" {% if filters.category == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+    <div>
+        <label for="f-from">Du</label>
+        <input class="control" type="date" id="f-from" name="date_from" value="{{ filters.date_from }}">
+    </div>
+    <div>
+        <label for="f-to">Au</label>
+        <input class="control" type="date" id="f-to" name="date_to" value="{{ filters.date_to }}">
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary"><i data-lucide="search"></i> Filtrer</button>
+        {% if has_filters %}
+        <a href="/transactions" class="btn btn-ghost">Réinitialiser</a>
+        {% endif %}
+    </div>
+</form>
+
+<!-- ===== Liste ===== -->
+{% if transactions %}
+<section class="card table-card">
+    <div class="table-wrap">
+        <table class="tx">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Catégorie</th>
+                    <th>Type</th>
+                    <th class="right">Montant</th>
+                    <th class="right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td class="nowrap">{{ t.date|fr_date }}</td>
+                    <td>{{ t.description or '—' }}</td>
+                    <td>
+                        <div class="cat-cell">
+                            <span class="cat-icon {{ t.type }}"><i data-lucide="{{ t.category_icon }}"></i></span>
+                            {{ t.category_name }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {{ 'expense' if t.type == 'expense' else '' }}">
+                            {{ 'Dépense' if t.type == 'expense' else 'Revenu' }}
+                        </span>
+                    </td>
+                    <td class="right amount {{ t.type }}">
+                        {{ '−' if t.type == 'expense' else '+' }} {{ t.amount|da }}
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button type="button" class="icon-btn sm js-edit" aria-label="Modifier cette transaction"
+                                    data-id="{{ t.id }}" data-type="{{ t.type }}" data-amount="{{ t.amount }}"
+                                    data-category="{{ t.category_id }}" data-date="{{ t.date }}"
+                                    data-description="{{ t.description or '' }}">
+                                <i data-lucide="pencil"></i>
+                            </button>
+                            <button type="button" class="icon-btn sm danger js-delete" aria-label="Supprimer cette transaction"
+                                    data-id="{{ t.id }}" data-type="{{ t.type }}" data-amount="{{ t.amount|da }}"
+                                    data-description="{{ t.description or t.category_name }}">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% else %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="search-x"></i></span>
+    <h3>Aucun résultat</h3>
+    <p class="muted">Aucune transaction ne correspond à vos critères. Essayez de modifier les filtres.</p>
+    <a href="/transactions" class="btn btn-ghost">Réinitialiser les filtres</a>
+</section>
+{% endif %}
+{% endif %}
+
+<!-- ===== Fenêtre modale : ajouter / modifier ===== -->
+<div class="modal" id="tx-modal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-head">
+            <h3 id="modal-title">Ajouter une transaction</h3>
+            <button type="button" class="icon-btn sm" data-close aria-label="Fermer la fenêtre">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+
+        <form id="tx-form" novalidate>
+            <input type="hidden" id="tx-id">
+
+            <div class="segmented" role="radiogroup" aria-label="Type de transaction">
+                <label>
+                    <input type="radio" name="type" value="expense" checked>
+                    <span><i data-lucide="trending-down"></i> Dépense</span>
+                </label>
+                <label>
+                    <input type="radio" name="type" value="income">
+                    <span><i data-lucide="trending-up"></i> Revenu</span>
+                </label>
+            </div>
+
+            <div class="field">
+                <label for="tx-amount">Montant ({{ currency }})</label>
+                <input class="control" type="number" id="tx-amount" name="amount" min="0.01" step="0.01"
+                       inputmode="decimal" placeholder="Ex : 2500" required>
+                <p class="field-error"></p>
+            </div>
+
+            <div class="field">
+                <label for="tx-category">Catégorie</label>
+                <select class="control" id="tx-category" name="category_id" required></select>
+                <p class="field-error"></p>
+            </div>
+
+            <div class="field">
+                <label for="tx-date">Date</label>
+                <input class="control" type="date" id="tx-date" name="date" required>
+                <p class="field-error"></p>
+            </div>
+
+            <div class="field">
+                <label for="tx-description">Description <span class="muted">(facultatif)</span></label>
+                <input class="control" type="text" id="tx-description" name="description" maxlength="200"
+                       placeholder="Ex : Courses du marché">
+                <p class="field-error"></p>
+            </div>
+
+            <div class="modal" id="tx-modal" aria-hidden="true" data-categories='{{ categories|tojson }}'>
+                <button type="button" class="btn btn-ghost" data-close>Annuler</button>
+                <button type="submit" class="btn btn-primary" id="tx-submit">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/transactions.js') }}"></script>
+{% endblock %}

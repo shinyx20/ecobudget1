@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Notifications · EcoBudget{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+{% set icons = {'danger': 'triangle-alert', 'warning': 'bell-ring', 'success': 'circle-check', 'info': 'info'} %}
+
+{% if items %}
+<div class="page-head">
+    <div>
+        <h2>Vos notifications</h2>
+        <p class="muted">{{ unread_count }} non lue{{ 's' if unread_count > 1 else '' }} · alertes de budget et d'objectifs.</p>
+    </div>
+    <div class="btn-row">
+        <form method="post" action="/notifications/read">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-ghost"><i data-lucide="check-check"></i> Tout marquer comme lu</button>
+        </form>
+        <form method="post" action="/notifications/clear" id="clear-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="button" class="btn btn-ghost" id="clear-btn"><i data-lucide="trash-2"></i> Tout supprimer</button>
+        </form>
+    </div>
+</div>
+
+<section class="card notif-card">
+    <ul class="notif-list">
+        {% for n in items %}
+        <li class="notif {{ n.type }} {{ '' if n.is_read else 'unread' }}">
+            <span class="notif-icon"><i data-lucide="{{ icons.get(n.type, 'info') }}"></i></span>
+            <div class="notif-body">
+                <p>{{ n.message }}</p>
+                <span class="muted small">{{ n.created_at[:10]|fr_date }}</span>
+            </div>
+            {% if not n.is_read %}<span class="badge">Nouveau</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% else %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="bell"></i></span>
+    <h3>Aucune notification</h3>
+    <p class="muted">Vous serez prévenu ici quand un budget atteint 80 % ou est dépassé, ou quand un objectif est proche.</p>
+    <a href="/budgets" class="btn btn-primary">Définir un budget</a>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var btn = document.getElementById("clear-btn");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+        Swal.fire({
+            title: "Supprimer toutes les notifications ?",
+            text: "Cette action est définitive.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Oui, tout supprimer",
+            cancelButtonText: "Annuler",
+            confirmButtonColor: "#E76F51",
+            cancelButtonColor: "#6B7A80",
+            focusCancel: true
+        }).then(function (result) {
+            if (result.isConfirmed) document.getElementById("clear-form").submit();
+        });
+    });
+})();
+</script>
+{% endblock %}

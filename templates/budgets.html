@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Budgets · EcoBudget{% endblock %}
+{% block page_title %}Budgets{% endblock %}
+
+{% block content %}
+{% macro status_line(b) %}
+    {% if b.state == 'danger' %}
+    <span class="status danger"><i data-lucide="triangle-alert"></i> Dépassé de {{ (b.spent - b.budget)|da }}</span>
+    {% elif b.state == 'warning' %}
+    <span class="status warning"><i data-lucide="bell-ring"></i> 80 % atteint · reste {{ b.remaining|da }}</span>
+    {% else %}
+    <span class="status ok"><i data-lucide="circle-check"></i> Sous contrôle · reste {{ b.remaining|da }}</span>
+    {% endif %}
+{% endmacro %}
+
+<div class="page-head">
+    <div>
+        <h2>Budgets de {{ month_label }}</h2>
+        <p class="muted">Fixez vos limites de dépenses et suivez votre progression.</p>
+    </div>
+    <div class="head-actions">
+        <div class="month-nav">
+            <a class="icon-btn sm" href="/budgets?month={{ prev_month }}" aria-label="Mois précédent"><i data-lucide="chevron-left"></i></a>
+            <span>{{ month_label|capitalize }}</span>
+            <a class="icon-btn sm" href="/budgets?month={{ next_month }}" aria-label="Mois suivant"><i data-lucide="chevron-right"></i></a>
+        </div>
+        <button type="button" class="btn btn-primary js-open-budget"><i data-lucide="plus"></i> Définir un budget</button>
+    </div>
+</div>
+
+<!-- ===== Budget global ===== -->
+{% if g %}
+<section class="card budget-global">
+    <div class="bc-head">
+        <div>
+            <span class="muted">Budget mensuel global</span>
+            <p class="big">{{ g.spent|da }} <span class="muted">sur {{ g.budget|da }}</span></p>
+        </div>
+        <div class="row-actions">
+            <button type="button" class="icon-btn sm js-edit-budget" aria-label="Modifier le budget global"
+                    data-category="" data-amount="{{ g.budget }}"><i data-lucide="pencil"></i></button>
+            <button type="button" class="icon-btn sm danger js-delete-budget" aria-label="Supprimer le budget global"
+                    data-id="{{ g.id }}" data-name="le budget global"><i data-lucide="trash-2"></i></button>
+        </div>
+    </div>
+    <div class="progress {{ g.state if g.state != 'ok' else '' }}"><span data-progress="{{ [g.percent, 100]|min }}"></span></div>
+    <div class="bc-foot">
+        {{ status_line(g) }}
+        <span class="muted small">{{ g.percent }} % utilisé</span>
+    </div>
+</section>
+{% else %}
+<section class="card budget-global-empty">
+    <span class="empty-icon"><i data-lucide="wallet"></i></span>
+    <div>
+        <h3>Aucun budget global défini</h3>
+        <p class="muted">Fixez un plafond de dépenses pour {{ month_label }} afin de recevoir des alertes.</p>
+    </div>
+    <button type="button" class="btn btn-primary js-open-budget"><i data-lucide="plus"></i> Définir le budget global</button>
+</section>
+{% endif %}
+
+<!-- ===== Budgets par catégorie ===== -->
+<h3 class="section-title">Budgets par catégorie</h3>
+{% if cats %}
+<div class="card-grid">
+    {% for b in cats %}
+    <article class="card budget-card">
+        <div class="bc-head">
+            <div class="cat-cell">
+                <span class="cat-icon expense"><i data-lucide="{{ b.icon }}"></i></span>
+                <strong>{{ b.name }}</strong>
+            </div>
+            <div class="row-actions">
+                <button type="button" class="icon-btn sm js-edit-budget" aria-label="Modifier le budget {{ b.name }}"
+                        data-category="{{ b.category_id }}" data-amount="{{ b.budget }}"><i data-lucide="pencil"></i></button>
+                <button type="button" class="icon-btn sm danger js-delete-budget" aria-label="Supprimer le budget {{ b.name }}"
+                        data-id="{{ b.id }}" data-name="le budget « {{ b.name }} »"><i data-lucide="trash-2"></i></button>
+            </div>
+        </div>
+        <p class="bc-amounts"><strong>{{ b.spent|da }}</strong> <span class="muted">sur {{ b.budget|da }}</span></p>
+        <div class="progress {{ b.state if b.state != 'ok' else '' }}"><span data-progress="{{ [b.percent, 100]|min }}"></span></div>
+        <div class="bc-foot">
+            {{ status_line(b) }}
+            <span class="muted small">{{ b.percent }} %</span>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="card empty-state">
+    <span class="empty-icon"><i data-lucide="chart-no-axes-column"></i></span>
+    <h3>Aucun budget par catégorie</h3>
+    <p class="muted">Définissez par exemple un budget Alimentation ou Transport pour suivre chaque poste.</p>
+    <div class="btn-row">
+        <button type="button" class="btn btn-primary js-open-budget"><i data-lucide="plus"></i> Définir un budget</button>
+        {% if can_copy %}
+        <button type="button" class="btn btn-ghost" id="copy-prev"><i data-lucide="copy"></i> Copier {{ prev_label }}</button>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== Modale ===== -->
+<div class="modal" id="budget-modal" aria-hidden="true" data-month="{{ month }}">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="budget-title">
+        <div class="modal-head">
+            <h3 id="budget-title">Définir un budget</h3>
+            <button type="button" class="icon-btn sm" data-close aria-label="Fermer la fenêtre"><i data-lucide="x"></i></button>
+        </div>
+        <form id="budget-form" novalidate>
+            <div class="field">
+                <label for="b-category">Budget pour</label>
+                <select class="control" id="b-category">
+                    <option value="">Budget global du mois (toutes catégories)</option>
+                    {% for c in expense_categories %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="field-error"></p>
+            </div>
+            <div class="field">
+                <label for="b-amount">Montant maximum ({{ currency }})</label>
+                <input class="control" type="number" id="b-amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Ex : 30000" required>
+                <p class="field-hint">Vous recevrez une alerte à 80 % et en cas de dépassement.</p>
+                <p class="field-error"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Annuler</button>
+                <button type="submit" class="btn btn-primary" id="b-submit">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/budgets.js') }}"></script>
+{% endblock %}

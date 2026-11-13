@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="{{ user_settings.theme if user_settings else '' }}"{% if user_settings and user_settings.compact_view %} data-compact="1"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}EcoBudget{% endblock %}</title>
+
+    <!-- Thème : celui du compte si connecté, sinon le dernier choix du navigateur -->
+    <script>
+        (function () {
+            try {
+                var root = document.documentElement;
+                var server = root.getAttribute("data-theme");
+                if (server === "light" || server === "dark") {
+                    localStorage.setItem("eco-theme", server);
+                } else {
+                    var t = localStorage.getItem("eco-theme");
+                    if (t) root.setAttribute("data-theme", t);
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body data-flash='{{ get_flashed_messages(with_categories=true)|tojson }}' data-currency="{{ currency }}"{% if current_user %} data-auth="1"{% endif %}>
+{% block shell %}
+<div class="app-shell">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <a href="/dashboard" class="brand">
+            <span class="brand-logo"><i data-lucide="leaf"></i></span>
+            <span class="brand-name">EcoBudget</span>
+        </a>
+
+        {% set nav = [
+            ("Dashboard", "/dashboard", "layout-dashboard"),
+            ("Transactions", "/transactions", "arrow-left-right"),
+            ("Budgets", "/budgets", "wallet"),
+            ("Objectifs d'épargne", "/goals", "piggy-bank"),
+            ("Statistiques", "/statistics", "chart-pie"),
+            ("Conseils intelligents", "/advice", "lightbulb"),
+            ("Profil", "/profile", "user"),
+            ("Paramètres", "/settings", "settings")
+        ] %}
+        <nav class="nav" aria-label="Navigation principale">
+            {% for label, href, icon in nav %}
+            <a href="{{ href }}" class="nav-link {% if request.path.startswith(href) %}active{% endif %}"
+               {% if request.path.startswith(href) %}aria-current="page"{% endif %}>
+                <i data-lucide="{{ icon }}"></i><span>{{ label }}</span>
+            </a>
+            {% endfor %}
+        </nav>
+
+        <a href="/logout" class="nav-link nav-logout" id="logout-link">
+            <i data-lucide="log-out"></i><span>Déconnexion</span>
+        </a>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ===== ZONE PRINCIPALE ===== -->
+    <div class="main">
+        <header class="topbar">
+            <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="Ouvrir le menu">
+                <i data-lucide="menu"></i>
+            </button>
+            <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+
+            <div class="topbar-actions">
+                <button class="icon-btn" type="button" data-theme-toggle aria-label="Changer le thème (clair / sombre)">
+                    <i data-lucide="moon" class="icon-moon"></i>
+                    <i data-lucide="sun" class="icon-sun"></i>
+                </button>
+                <a class="icon-btn" href="/notifications" aria-label="Notifications ({{ unread_count }} non lues)">
+                    <i data-lucide="bell"></i>
+                    {% if unread_count > 0 %}<span class="badge-dot">{{ unread_count }}</span>{% endif %}
+                </a>
+                <a class="avatar" href="/profile" aria-label="Mon profil">
+                    {% if current_user.photo %}
+                    <img src="{{ url_for('profile.avatar', v=current_user.photo) }}" alt="">
+                    {% else %}
+                    {{ current_user.full_name[:1]|upper }}
+                    {% endif %}
+                </a>
+            </div>
+        </header>
+
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<!-- ===== EcoBot (assistant) ===== -->
+<div class="chatbot" id="chatbot">
+    <section class="chatbot-panel" id="chatbot-panel" hidden aria-label="Assistant EcoBot">
+        <header class="chatbot-head">
+            <span class="bot-avatar"><i data-lucide="bot"></i></span>
+            <div>
+                <strong>EcoBot</strong>
+                <span class="chatbot-sub">Assistant EcoBudget</span>
+            </div>
+            <button type="button" class="chatbot-close" id="chatbot-close" aria-label="Fermer EcoBot">
+                <i data-lucide="x"></i>
+            </button>
+        </header>
+
+        <div class="chatbot-log" id="chatbot-log" role="log" aria-live="polite"></div>
+
+        <div class="chatbot-chips" aria-label="Sujets proposés">
+            <button type="button" class="chip" data-topic="add">Ajouter une transaction</button>
+            <button type="button" class="chip" data-topic="budget">Créer un budget</button>
+            <button type="button" class="chip" data-topic="stats">Voir mes statistiques</button>
+            <button type="button" class="chip" data-topic="save">Comment économiser ?</button>
+            <button type="button" class="chip" data-topic="situation">Où en suis-je ce mois-ci ?</button>
+        </div>
+
+        <form class="chatbot-form" id="chatbot-form" autocomplete="off">
+            <input type="text" id="chatbot-input" maxlength="200" placeholder="Posez votre question…" aria-label="Votre question">
+            <button type="submit" class="chatbot-send" aria-label="Envoyer"><i data-lucide="send"></i></button>
+        </form>
+    </section>
+
+    <button type="button" class="chatbot-toggle" id="chatbot-toggle"
+            aria-expanded="false" aria-controls="chatbot-panel" aria-label="Ouvrir l'assistant EcoBot">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- Antennes -->
+            <path d="M20 40 V22 M80 40 V22" stroke="#168B70" stroke-width="3" fill="none"/>
+            <circle cx="20" cy="20" r="5" fill="#A8E8D4" stroke="#168B70" stroke-width="2"/>
+            <circle cx="80" cy="20" r="5" fill="#A8E8D4" stroke="#168B70" stroke-width="2"/>
+            <!-- Tête -->
+            <path d="M12 55 Q12 30 50 30 Q88 30 88 55 V65 Q88 88 50 88 Q12 88 12 65 Z"
+                  fill="#BDEDDC" stroke="#168B70" stroke-width="3"/>
+            <!-- Oreilles -->
+            <rect x="5" y="48" width="12" height="22" rx="6" fill="#65CBA9" stroke="#168B70" stroke-width="2"/>
+            <rect x="83" y="48" width="12" height="22" rx="6" fill="#65CBA9" stroke="#168B70" stroke-width="2"/>
+            <!-- Visage -->
+            <path d="M22 52 Q22 43 34 43 H66 Q78 43 78 52 V65 Q78 79 50 79 Q22 79 22 65 Z"
+                  fill="#FFFFFF" stroke="#168B70" stroke-width="2.5"/>
+            <!-- Casque -->
+            <ellipse cx="50" cy="34" rx="17" ry="6" fill="#D8F5E9" stroke="#168B70" stroke-width="2"/>
+            <!-- Yeux -->
+            <circle cx="38" cy="59" r="4.5" fill="#168B70"/>
+            <circle cx="62" cy="59" r="4.5" fill="#168B70"/>
+            <!-- Sourire -->
+            <path d="M41 67 Q50 76 59 67" fill="none" stroke="#168B70" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Microphone -->
+            <rect x="39" y="87" width="22" height="7" rx="3.5" fill="#65CBA9" stroke="#168B70" stroke-width="2"/>
+        </svg>
+    </button>
+</div>
+{% endblock %}
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
